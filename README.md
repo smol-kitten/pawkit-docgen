@@ -19,6 +19,7 @@ non-sensitive, deterministic files are published; everything sensitive is exclud
 - `scope_util.py`
 - `cli_util.py`
 - `php_symbols.php`
+- `ci-docs-publish.sh`
 
 ## Use in CI
 Copy these files to `/home/claude/.claude-memory` (the scripts' expected home), then run
