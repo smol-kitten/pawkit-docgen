@@ -19,13 +19,13 @@
 set -uo pipefail
 
 REPO="${GITHUB_WORKSPACE:-$PWD}"
-TOOLING_SRC="${TOOLING_SRC:-.tooling}"           # checkout of polo-nyan/claude
-HOME_DIR=/home/claude/.claude-memory             # the hardcoded tooling home
+TOOLING_SRC="${TOOLING_SRC:-.tooling}"                       # checkout of the public pawkit-docgen mirror
+HOME_DIR="${CLAUDE_MEMORY_HOME:-/home/claude/.claude-memory}"  # tooling home (overridable for tests)
 
 # 1) materialize the tooling at its expected home (idempotent).
-mkdir -p /home/claude
+mkdir -p "$(dirname "$HOME_DIR")"
 if [ ! -e "$HOME_DIR" ]; then
-  # the repo lays the scripts under claude-memory/ (see polo-nyan/claude)
+  # pawkit-docgen lays the scripts at repo ROOT; a claude-memory/ subdir layout also works.
   if [ -d "$TOOLING_SRC/claude-memory" ]; then
     cp -a "$TOOLING_SRC/claude-memory" "$HOME_DIR"
   else
