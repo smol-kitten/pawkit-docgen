@@ -1,0 +1,15 @@
+# Managed by depbot.py (fleet dependabot config).
+# Ecosystems auto-detected from the repo tree; minor+patch grouped to curb PR spam.
+# Safe to hand-edit: `update` only ADDS missing grouping, it never rewrites entries.
+version: 2
+updates:
+- package-ecosystem: pip
+  directory: /
+  schedule:
+    interval: weekly
+  open-pull-requests-limit: 10
+  groups:
+    minor-and-patch:
+      update-types:
+      - minor
+      - patch
