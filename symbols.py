@@ -34,7 +34,7 @@ import subprocess
 sys.path.insert(0, "/home/claude/.claude-memory")
 from scope_util import current_scope, repo_root
 
-HERE = "/home/claude/.claude-memory"
+HERE = os.environ.get("PAWKIT_HOME", "/home/claude/.claude-memory")
 IGNORE_DIRS = ("vendor/", "node_modules/", ".venv/", "venv/", "dist/", "build/",
                "target/", ".next/", "__pycache__/", ".git/", "bower_components/",
                "third_party/")
