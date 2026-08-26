@@ -85,7 +85,20 @@ def main():
     a = ap.parse_args()
 
     if a.cmd == "write":
+        # Body comes from STDIN. `arg2` is NOT the body — passing content there is silently
+        # ignored, and the write then reports ok:true for an empty page. That happened: a
+        # long page was "written" successfully and landed as front-matter and nothing else,
+        # which is only noticeable if you go and count the lines afterwards. Both failure
+        # shapes are now loud, because a tool that reports success for a no-op teaches you
+        # to stop checking.
+        if a.arg2:
+            sys.exit("wiki write: the body is read from STDIN, not an argument — got an "
+                     "extra positional that would be IGNORED.\n  wiki.py write <slug> "
+                     "[--title ...] < page.md\n  ... | wiki.py write <slug>")
         body = sys.stdin.read() if not sys.stdin.isatty() else ""
+        if not body.strip():
+            sys.exit("wiki write: empty body on STDIN — refusing to write a page with only "
+                     "front-matter. Redirect a file or pipe content in.")
         r = W.write_page(a.arg, a.title or a.arg, body, cwd=a.cwd, scope=a.scope,
                          tags=_csv(a.tags), summary=a.summary,
                          related=_csv(a.related), web=_csv(a.web))
