@@ -42,6 +42,8 @@ foreach (array_slice($argv, 1) as $path) {
     $n = count($toks);
     $ns = '';
     $class = '';
+    $braceDepth = 0;        // global { } nesting (T_FUNCTION's own $depth is param-local)
+    $classDepth = -1;       // nesting level at which the current class was declared
     $pendingDoc = null;     // most recent docblock awaiting a declaration
     $vis = '';              // visibility modifier awaiting a declaration
     $prevSig = null;        // previous meaningful token id (to skip ::class)
@@ -52,11 +54,23 @@ foreach (array_slice($argv, 1) as $path) {
         if (is_string($t)) {
             // structural punctuation: '{' '}' ';' end a declaration context → drop doc
             if ($t === ';' || $t === '{' || $t === '}') { $pendingDoc = null; $vis = ''; }
+            if ($t === '{') { $braceDepth++; }
+            if ($t === '}') {
+                $braceDepth--;
+                // the class body has closed: anything after it is top-level again. Before
+                // this, $class was set once and never cleared, so every function declared
+                // AFTER a class in the same file was indexed as that class's method.
+                if ($classDepth >= 0 && $braceDepth <= $classDepth) { $class = ''; $classDepth = -1; }
+            }
             $prevSig = $t;
             continue;
         }
 
         [$id, $text, $line] = $t;
+        // "{$var}" and "${expr}" inside strings open a brace that closes with a RAW '}'
+        if ($id === T_CURLY_OPEN || (defined('T_DOLLAR_OPEN_CURLY_BRACES') && $id === T_DOLLAR_OPEN_CURLY_BRACES)) {
+            $braceDepth++; continue;
+        }
         if ($id === T_WHITESPACE || $id === T_COMMENT) continue;
         if ($id === T_DOC_COMMENT) { $pendingDoc = $text; $prevSig = $id; continue; }
         if ($id === T_PUBLIC) { $vis = 'public'; $prevSig = $id; continue; }
@@ -88,7 +102,8 @@ foreach (array_slice($argv, 1) as $path) {
                 break;
             }
             if ($nm !== '') {
-                $class = $nm;   // new top-level class scope (approx: 1 class/file common)
+                $class = $nm;           // scope until its body's closing brace
+                $classDepth = $braceDepth;
                 echo json_encode([
                     'file' => $path, 'line' => $line, 'kind' => 'class', 'class' => '',
                     'name' => $nm, 'signature' => '',
