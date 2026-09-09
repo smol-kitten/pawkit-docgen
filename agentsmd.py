@@ -28,6 +28,12 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 
+MANIFEST = {
+    "role": "cli",
+    "provides": "deterministic AGENTS.md generator (no AI)",
+}
+
+
 CUSTOM_START = "<!-- agentsmd:custom:start -->"
 CUSTOM_END = "<!-- agentsmd:custom:end -->"
 GEN_MARK = "<!-- agentsmd:generated -->"

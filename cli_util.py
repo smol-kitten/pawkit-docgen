@@ -25,6 +25,13 @@ import json
 import difflib
 import argparse
 
+MANIFEST = {
+    "role": "lib",
+    "provides": "one consistent contract for every .claude-memory CLI, added with a single "
+                 "line so we normalize behavior WITHOUT rewriting each script's argparse…",
+}
+
+
 STD_GLOBAL = ("--cwd", "--json", "--scope")
 
 

@@ -18,6 +18,13 @@ sys.path.insert(0, "/home/claude/.claude-memory")
 import wiki_lib as W
 from scope_util import current_scope
 
+MANIFEST = {
+    "role": "cli",
+    "provides": "wiki: curated per-repo + global knowledge pages (portable; repo pages live "
+                 "in <repo>/.claude/wiki and travel with the repo)",
+}
+
+
 
 def _csv(s):
     return [x.strip() for x in (s or "").split(",") if x.strip()]

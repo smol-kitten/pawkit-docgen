@@ -22,6 +22,13 @@ import sys
 sys.path.insert(0, "/home/claude/.claude-memory")
 from scope_util import current_scope, repo_root
 
+MANIFEST = {
+    "role": "lib",
+    "provides": "Wiki layer — curated, longer-form knowledge that complements the "
+                 "short-fact semantic memory",
+}
+
+
 CENTRAL = "/home/claude/.claude-memory/wiki"   # holds the "global" scope
 
 

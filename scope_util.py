@@ -1,6 +1,12 @@
 """Resolve the current memory scope: git-repo basename of the cwd, else 'global'."""
 import os, re, subprocess
 
+MANIFEST = {
+    "role": "lib",
+    "provides": "Resolve the current memory scope: git-repo basename of the cwd, else 'global'",
+}
+
+
 
 def _run(args):
     try:

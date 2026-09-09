@@ -21,6 +21,12 @@ from collections import Counter
 sys.path.insert(0, "/home/claude/.claude-memory")
 from scope_util import current_scope, repo_root
 
+MANIFEST = {
+    "role": "cli",
+    "provides": "deterministic, dependency-free repo cartographer",
+}
+
+
 LANG = {
     ".php": "PHP", ".py": "Python", ".js": "JavaScript", ".ts": "TypeScript",
     ".tsx": "TypeScript/React", ".jsx": "JavaScript/React", ".go": "Go", ".rs": "Rust",
