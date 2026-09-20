@@ -1800,8 +1800,8 @@ def cmd_index(root, scope):
     if not idx:
         print("no symbol index — run: symbols.py gen"); return
     subprocess.run([os.path.join(HERE, "ensure-server.sh")], timeout=25, capture_output=True)
-    from mcp_client import McpHttpClient
-    c = McpHttpClient("http://127.0.0.1:8899/mcp")
+    from mcp_client import McpHttpClient, memory_client
+    c = memory_client()
     sscope = f"sym:{scope}"
     n = 0
     # prefer documented + public-looking symbols; cap to keep the store lean

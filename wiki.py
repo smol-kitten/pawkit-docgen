@@ -32,8 +32,8 @@ def _csv(s):
 
 def _mem():
     subprocess.run(["/home/claude/.claude-memory/ensure-server.sh"], timeout=25, capture_output=True)
-    from mcp_client import McpHttpClient
-    return McpHttpClient("http://127.0.0.1:8899/mcp", timeout=8)
+    from mcp_client import McpHttpClient, memory_client
+    return memory_client(timeout=8)
 
 
 def _index_page(slug, scope, title, summary, body):
