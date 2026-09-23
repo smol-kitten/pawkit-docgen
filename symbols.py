@@ -31,7 +31,7 @@ import ast
 import argparse
 import subprocess
 
-sys.path.insert(0, "/home/claude/.claude-memory")
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 from scope_util import current_scope, repo_root
 
 MANIFEST = {
@@ -40,7 +40,7 @@ MANIFEST = {
 }
 
 
-HERE = os.environ.get("PAWKIT_HOME", "/home/claude/.claude-memory")
+HERE = os.environ.get("PAWKIT_HOME", os.path.dirname(os.path.abspath(__file__)))
 IGNORE_DIRS = ("vendor/", "node_modules/", ".venv/", "venv/", "dist/", "build/",
                "target/", ".next/", "__pycache__/", ".git/", "bower_components/",
                "third_party/")

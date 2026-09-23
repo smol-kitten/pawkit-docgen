@@ -19,7 +19,7 @@ import json
 import yaml
 
 import sys
-sys.path.insert(0, "/home/claude/.claude-memory")
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 from scope_util import current_scope, repo_root
 
 MANIFEST = {

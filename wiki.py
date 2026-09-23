@@ -14,7 +14,7 @@ Scope is auto-detected from the cwd's git remote (e.g. catboyindustries-arg);
 omit --scope for the current repo, or pass --scope global for cross-repo docs.
 """
 import os, sys, json, argparse, subprocess
-sys.path.insert(0, "/home/claude/.claude-memory")
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 import wiki_lib as W
 from scope_util import current_scope
 
