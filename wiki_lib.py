@@ -80,13 +80,61 @@ def _walk(base):
             yield slug, p
 
 
-def _load_index(base):
-    """INDEX.json as a list (rebuilds if missing/corrupt). Tolerant of v1/v2 rows."""
+REBUILD_LOCK_MAX_S = 600
+
+
+def _read_index(base):
+    """INDEX.json as a list — WITHOUT ever rebuilding on the caller's path.
+
+    Order: INDEX.json, then the last-known-good copy, then [] with a background rebuild queued.
+    The old behaviour — any read error means `_index(base)` — rebuilt the whole index IN MEMORY on
+    every prompt and never saved it, so one bad file (a merge-conflict marker, a half-written
+    file from a concurrent writer) turned every prompt into a full wiki walk until a human
+    happened to regenerate it. A wiki hint missing for one prompt is harmless. A 37x IO blow-up
+    on every prompt is not."""
     idx = os.path.join(base, "INDEX.json")
+    for path in (idx, idx + ".last"):
+        try:
+            with open(path) as fh:
+                rows = json.load(fh)
+            if path != idx:
+                _schedule_rebuild(base, "index-unreadable-used-last-good")
+            return rows
+        except Exception:
+            continue
+    if os.path.isdir(base):
+        _schedule_rebuild(base, "index-missing")
+    return []
+
+
+def _schedule_rebuild(base, why):
+    """Queue ONE detached rebuild per base, deduplicated by a lock file, and record that the hot
+    path hit a miss. A fallback that stays silent is how this bug hid; this one leaves a trace."""
     try:
-        return json.load(open(idx))
+        import subprocess, sys as _sys, time as _t
+        lock = os.path.join(base, ".index-rebuild.lock")
+        try:
+            if _t.time() - os.path.getmtime(lock) < REBUILD_LOCK_MAX_S:
+                return                               # a rebuild is already on its way
+        except OSError:
+            pass
+        open(lock, "w").write(str(os.getpid()))
+        try:
+            import tel
+            tel.emit("hook", "wiki-index-miss", ok=False, meta={"base": base, "why": why})
+        except Exception:
+            pass
+        wiki = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wiki.py")
+        subprocess.Popen([_sys.executable, wiki, "index"], cwd=os.path.dirname(os.path.abspath(__file__)),
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         start_new_session=True)
     except Exception:
-        return _index(base)
+        pass
+
+
+def _load_index(base):
+    """INDEX.json as a list. Tolerant of v1/v2 rows. Never rebuilds inline (see _read_index)."""
+    return _read_index(base)
 
 
 def _moved_map(base):
@@ -145,15 +193,32 @@ def _index(base):
                       "tags": fm.get("tags", []), "summary": fm.get("summary", ""),
                       "related": fm.get("related", []), "web": fm.get("web", []),
                       "path": slug, "parent": parent, "order": fm.get("order", 0),
-                      "sections": sections_of(body)})
+                      "sections": sections_of(body), "mtime": int(os.path.getmtime(p))})
     pages.sort(key=lambda x: x["slug"])          # stable order → minimal INDEX.json diffs
+    _write_index(base, pages)
+    return pages
+
+
+def _write_index(base, pages):
+    """ATOMIC write (temp file + os.replace) plus a last-known-good copy.
+    The old `json.dump(pages, open(path, "w"))` truncated the file before writing it, so any hook
+    that read it mid-write got an empty file, failed to parse it, and fell into a full rebuild. With
+    many sessions running hooks, that race fired routinely (measured 2026-09-23: 24,958 syscalls and
+    450 directory scans per prompt while the index was unreadable, against 680 and 33)."""
     try:
         os.makedirs(base, exist_ok=True)
-        json.dump(pages, open(os.path.join(base, "INDEX.json"), "w"),
-                  sort_keys=True, separators=(",", ":"))
+        dst = os.path.join(base, "INDEX.json")
+        tmp = f"{dst}.tmp.{os.getpid()}"
+        with open(tmp, "w") as fh:
+            json.dump(pages, fh, sort_keys=True, separators=(",", ":"))
+        os.replace(tmp, dst)                     # readers see the old file or the new one, never half
+        try:
+            import shutil
+            shutil.copyfile(dst, dst + ".last")  # the fallback the hot path reads if INDEX.json breaks
+        except Exception:
+            pass
     except Exception:
         pass
-    return pages
 
 
 _FENCE_RE = re.compile(r"^```", re.M)
@@ -356,22 +421,13 @@ def index_hints(cwd=None):
     import time as _time
     out = []
     for scope, base in read_bases(cwd):
-        idx_path = os.path.join(base, "INDEX.json")
-        items = []
-        if os.path.exists(idx_path):
-            try:
-                items = json.load(open(idx_path))
-            except Exception:
-                items = _index(base)
-        elif os.path.isdir(base):
-            items = _index(base)
+        items = _read_index(base)                    # never rebuilds on the prompt path
+        now = _time.time()
         for it in items:
-            try:
-                fp = os.path.join(base, (it.get("slug", "") or "") + ".md")
-                if os.path.exists(fp):
-                    it["age_days"] = int((_time.time() - os.path.getmtime(fp)) / 86400)
-            except Exception:
-                pass
+            # the index stores each page's mtime at build time; the old code did exists() and
+            # getmtime() on every page on every prompt (~360 stat calls, half a warm prompt's IO)
+            if it.get("mtime"):
+                it["age_days"] = int((now - it["mtime"]) / 86400)
             out.append(it)
     return out
 
