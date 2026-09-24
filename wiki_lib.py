@@ -12,6 +12,8 @@ Each wiki dir keeps an INDEX.json (title/tags/summary per page) for fast hints
 and listing. Greppable on disk; driven via the `wiki.py` CLI (cwd-aware) and the
 auto-hint in the recall hook. Reads span the current repo's wiki + global.
 """
+import os as _pk_os
+_PK_ROOT = _pk_os.path.dirname(_pk_os.path.realpath(__file__))   # the checkout this file runs from (pawkit 2.0 phase 7)
 import os
 import re
 import glob
@@ -29,7 +31,7 @@ MANIFEST = {
 }
 
 
-CENTRAL = "/home/claude/.claude-memory/wiki"   # holds the "global" scope
+CENTRAL = (_PK_ROOT + '/wiki')   # holds the "global" scope
 
 
 def _slug(s, allow_path=True):
@@ -250,7 +252,7 @@ def write_page(slug, title, body, cwd=None, scope=None, tags=None, summary="", r
         msg = f"⚠ wiki page '{slug}' ({scope}): {warn}"
         print(msg)
         try:
-            with open("/home/claude/.claude-memory/.wiki_lint_advice", "w") as fh:
+            with open((_PK_ROOT + '/.wiki_lint_advice'), "w") as fh:
                 fh.write(msg)
         except Exception:
             pass

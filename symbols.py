@@ -23,6 +23,8 @@ Usage:
   symbols.py index [--cwd P]                    upsert symbols into semantic memory
   symbols.py selftest                           regression-guard build_mermaid() (no repo needed)
 """
+import os as _pk_os
+_PK_ROOT = _pk_os.path.dirname(_pk_os.path.realpath(__file__))   # the checkout this file runs from (pawkit 2.0 phase 7)
 import os
 import re
 import sys
@@ -889,7 +891,7 @@ def write_code_map(root, scope, idx):
                "\n".join(f"  L{i}: {t}" for i, t in bad[:5]))
         print(msg)
         try:
-            with open("/home/claude/.claude-memory/.mermaid_lint_advice", "w") as fh:
+            with open((_PK_ROOT + '/.mermaid_lint_advice'), "w") as fh:
                 fh.write(msg)
         except Exception:
             pass

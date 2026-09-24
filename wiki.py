@@ -13,6 +13,8 @@ Usage:
 Scope is auto-detected from the cwd's git remote (e.g. catboyindustries-arg);
 omit --scope for the current repo, or pass --scope global for cross-repo docs.
 """
+import os as _pk_os
+_PK_ROOT = _pk_os.path.dirname(_pk_os.path.realpath(__file__))   # the checkout this file runs from (pawkit 2.0 phase 7)
 import os, sys, json, argparse, subprocess
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 import wiki_lib as W
@@ -31,7 +33,7 @@ def _csv(s):
 
 
 def _mem():
-    subprocess.run(["/home/claude/.claude-memory/ensure-server.sh"], timeout=25, capture_output=True)
+    subprocess.run([(_PK_ROOT + '/ensure-server.sh')], timeout=25, capture_output=True)
     from mcp_client import McpHttpClient, memory_client
     return memory_client(timeout=8)
 
