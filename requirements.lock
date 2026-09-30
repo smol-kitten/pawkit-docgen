@@ -1,0 +1,16 @@
+# Hash-pinned install set for the docs-refresh workflow: pip install --require-hashes -r requirements.lock
+# linux x86_64 wheels for CPython 3.12 (the workflow) and 3.13. Source: pawkit deploy/docgen-requirements.lock (t-b2773d).
+pyyaml==6.0.3 \
+    --hash=sha256:0f29edc409a6392443abf94b9cf89ce99889a1dd5376d94316ae5145dfedd5d6 \
+    --hash=sha256:ba1cc08a7ccde2d2ec775841541641e4548226580ab850948cbfda66a1befcdc
+tree-sitter==0.26.0 \
+    --hash=sha256:5a6b333b0282d8bb0af741f9b018bd2523d4eecb2686bf6717066a625fecfaa4 \
+    --hash=sha256:7075ef857ef86f327dbb72d1e2574dda78db5754b3a1fca6506acd7fe5d561a7
+tree-sitter-c-sharp==0.23.5 \
+    --hash=sha256:aa88a780204cd153c4c1ae2d59c654cee1402212fa0d069823d6d34301587438
+tree-sitter-embedded-template==0.25.0 \
+    --hash=sha256:a7c88c3dd8b94b3c9efe8ae071ff6b1b936a27ac5f6e651845c3b9631fa4c1c2
+tree-sitter-language-pack==0.13.0 \
+    --hash=sha256:0d4f261fce387ae040dae7e4d1c1aca63d84c88320afcc0961c123bec0be8377
+tree-sitter-yaml==0.7.2 \
+    --hash=sha256:f1a5c60c98b6c4c037aae023569f020d0c489fad8dc26fdfd5510363c9c29a41
