@@ -38,13 +38,52 @@ def _mem():
     return memory_client(timeout=8)
 
 
-def _index_page(slug, scope, title, summary, body):
-    """Index a page into the Qdrant memory (tag wiki.<slug>) for semantic search/recall."""
+def _index_page(slug, scope, title, summary, body, client=None):
+    """Index a page into the Qdrant memory (tag wiki.<slug>) for semantic search/recall.
+    Returns True when the write succeeded."""
     try:
         content = f"[wiki:{slug}] {title}\n{summary}\n{(body or '')[:1400]}"
-        _mem().call_tool("remember", {"content": content, "tag": f"wiki.{slug}", "scope": scope or "global"})
+        r = (client or _mem()).call_tool("remember", {"content": content, "tag": f"wiki.{slug}", "scope": scope or "global"})
+        return bool((r or {}).get("ok"))
     except Exception:
-        pass
+        return False
+
+
+def reindex(force=False):
+    """Re-upsert pages into semantic memory, skipping pages already indexed with the same content on
+    the same endpoint. (t-545b39: every run re-embedded all ~160 pages, serially, through the shared
+    hub — >2 min at host load 80, blocking the caller and loading the hub for every session.)
+    Returns (indexed, unchanged, failed)."""
+    import hashlib
+    import pk_state
+    from mcp_client import memory_endpoint
+    url = memory_endpoint()[0]
+    path = pk_state.path("wiki-indexed", "hashes.json")
+    try:
+        seen = json.load(open(path))
+    except Exception:
+        seen = {}
+    client, done, same, failed = None, 0, 0, 0
+    for pg in W.list_pages():
+        full = W.get_page(pg["slug"]) or {}
+        scope = pg.get("scope", "global")
+        args = (pg["slug"], scope, full.get("title", ""), full.get("summary", ""), full.get("body", ""))
+        key = f"{scope}/{pg['slug']}"
+        h = hashlib.sha1(json.dumps([url, *args]).encode()).hexdigest()[:16]
+        if not force and seen.get(key) == h:
+            same += 1
+            continue
+        client = client or _mem()
+        if _index_page(*args, client=client):
+            seen[key] = h
+            done += 1
+        else:
+            failed += 1
+    tmp = f"{path}.{os.getpid()}.tmp"
+    with open(tmp, "w") as fh:
+        json.dump(seen, fh)
+    os.replace(tmp, path)
+    return done, same, failed
 
 
 COMMANDS = {
@@ -80,6 +119,7 @@ def main():
     ap.add_argument("arg", nargs="?", default="")
     ap.add_argument("arg2", nargs="?", default="")
     ap.add_argument("--apply", action="store_true", help="split: actually write (default dry-run)")
+    ap.add_argument("--force", action="store_true", help="reindex: re-embed unchanged pages too")
     ap.add_argument("--to-global", action="store_true", dest="to_global",
                     help="promote: write a compact global digest instead of flat→topic")
     ap.add_argument("--title", default="")
@@ -163,12 +203,11 @@ def main():
             pg = W.get_page(slug) or {}
             print(f"  [{scope}/{slug}] ({how}) {pg.get('summary','') or pg.get('title', slug)}")
     elif a.cmd == "reindex":
-        n = 0
-        for pg in W.list_pages():
-            full = W.get_page(pg["slug"]) or {}
-            _index_page(pg["slug"], pg.get("scope", "global"), full.get("title", ""), full.get("summary", ""), full.get("body", ""))
-            n += 1
-        print(f"reindexed {n} pages into semantic memory")
+        done, same, failed = reindex(force=a.force)
+        print(f"reindexed {done} page(s) into semantic memory, {same} unchanged (skipped; --force redoes them)"
+              + (f", {failed} FAILED (memory unreachable or slow; they retry next run)" if failed else ""))
+        if failed:
+            sys.exit(1)
     elif a.cmd == "draft":
         # Bootstrap a wiki page from the repo's own files via claude -p (organic docs).
         import subprocess
