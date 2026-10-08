@@ -245,6 +245,16 @@ def write_page(slug, title, body, cwd=None, scope=None, tags=None, summary="", r
     slug = _slug(slug or title)
     os.makedirs(base, exist_ok=True)
     body, warn = _lint_body((body or "").strip())
+    # secret guard (orchestrator m-4211): a wiki page is recalled into sessions and copied into memory, so a
+    # credential in it leaks everywhere. Mask each hit in place; the page is still written (background
+    # generators write pages too), and the mask names the kind, never the value.
+    try:
+        import secretscan
+        for kind, val, _s, _e in sorted(secretscan.find(body), key=lambda h: -len(h[1])):
+            body = body.replace(val, f"[secret removed: {kind}]")
+            warn = (warn + "; " if warn else "") + f"masked a {kind}"
+    except Exception:
+        pass
     if warn:
         # write_page is often called from a detached background generator (repomap,
         # symbols code-map) with stdout discarded, so also leave a one-shot advisory
