@@ -7,9 +7,15 @@ updates:
   directory: /
   schedule:
     interval: weekly
+    day: thursday
+    time: "05:30"
+    timezone: Europe/Berlin
   open-pull-requests-limit: 10
   groups:
     minor-and-patch:
       update-types:
       - minor
       - patch
+    majors:
+      update-types:
+      - major
