@@ -260,9 +260,14 @@ def main():
         except Exception:
             pass
         if not body:
+            import halt
+            why = halt.agents_halted()
+            if why:
+                print(f"draft refused: {why}"); sys.exit(1)
             try:
                 body = subprocess.run(["claude", "-p", "--model", a.model, "--allowed-tools", ""],
-                                      input=prompt, capture_output=True, text=True, timeout=240).stdout.strip()
+                                      input=prompt, capture_output=True, text=True, timeout=240,
+                                      env=halt.agent_env()).stdout.strip()
             except Exception as e:
                 print(f"draft failed: {e}"); sys.exit(1)
         if not body:
