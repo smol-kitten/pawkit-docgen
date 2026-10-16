@@ -122,12 +122,16 @@ def _schedule_rebuild(base, why):
             pass
         open(lock, "w").write(str(os.getpid()))
         try:
-            import tel
-            tel.emit("hook", "wiki-index-miss", ok=False, meta={"base": base, "why": why})
+            import tel                               # a miss COUNTER, not a failure (ok=True): a single miss made
+            tel.emit("hook", "wiki-index-miss", ok=True, meta={"base": base, "why": why})   # health read 100 %
         except Exception:
             pass
-        wiki = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wiki.py")
-        subprocess.Popen([_sys.executable, wiki, "index"], cwd=os.path.dirname(os.path.abspath(__file__)),
+        # Rebuild THIS base's INDEX.json (t-7e48e4: this used to spawn the read-only `wiki.py index`, which never
+        # writes INDEX.json and ignores `base`, so a missing index was never repaired); the lock goes on success.
+        here = os.path.dirname(os.path.abspath(__file__))
+        code = ("import os, sys; sys.path.insert(0, sys.argv[1]); import wiki_lib; wiki_lib._index(sys.argv[2]); "
+                "os.remove(sys.argv[3])")
+        subprocess.Popen([_sys.executable, "-c", code, here, base, lock], cwd=here,
                          stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                          start_new_session=True)
     except Exception:
