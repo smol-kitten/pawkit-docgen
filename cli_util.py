@@ -91,3 +91,14 @@ def read_registry(script_path, timeout=6):
     except Exception:
         pass
     return None
+
+
+def run_selftest(test_path, args=()):
+    """Run a self-test file in a FRESH interpreter and exit with its code. Never in-process: a module that imported
+    store/vault at load time is already bound to the real store, so the test's own redirect would come too late
+    (t-ebe5db: `vault_migrate.py self-test` overwrote real secrets that way). PAWKIT_SELFTEST=1 makes store.py
+    refuse the default database if the test forgot its redirect."""
+    import os
+    import subprocess
+    env = dict(os.environ, PAWKIT_SELFTEST="1")
+    raise SystemExit(subprocess.run([sys.executable, test_path, *args], env=env).returncode)
