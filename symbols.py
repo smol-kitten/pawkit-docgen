@@ -935,7 +935,10 @@ def cmd_gen(root, scope, incremental=True):
             cur_head = _git(root, "rev-parse", "--short", "HEAD").strip()
             # a commit since the last index may have merged cross-file changes the
             # incremental approximation doesn't capture — rebuild fully in that case.
-            if cur_head and prev.get("head") and cur_head != prev.get("head"):
+            newer_indexer = os.path.getmtime(os.path.realpath(__file__)) > os.path.getmtime(p)
+            if newer_indexer or (cur_head and prev.get("head") and cur_head != prev.get("head")):
+                # (a newer symbols.py must re-parse every file: an incremental build keeps unchanged files' old
+                # symbols, so a parser fix never reached them; m-8380)
                 d = None
             else:
                 inc, info = build_incremental(root, prev, os.path.getmtime(p))
@@ -1635,6 +1638,8 @@ def _index_stale(root, idx):
         return f"built at {idx['head']}, HEAD is {head}"
     try:
         built = os.path.getmtime(_index_path(root))
+        if os.path.getmtime(os.path.realpath(__file__)) > built:
+            return "symbols.py (the indexer) changed after it was built"   # a parser fix must reach old indexes (m-8380)
         for ln in _git(root, "status", "--porcelain").splitlines():
             f = os.path.join(root, ln[3:].strip())
             if os.path.isfile(f) and os.path.getmtime(f) > built:
