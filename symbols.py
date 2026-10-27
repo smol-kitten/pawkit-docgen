@@ -484,6 +484,10 @@ def ts_symbols(root, rel, grammar, label):
 
     def doc_of(node):
         p = node.prev_sibling
+        if p is None and node.parent is not None and node.parent.type == "global_statement":
+            # C# top-level statements wrap each local function in a global_statement; its /// comment is the
+            # wrapper's sibling (netpaw Program.cs: 9 documented local functions read as undocumented, m-8380)
+            p = node.parent.prev_sibling
         if p is not None and "comment" in p.type:
             txt = p.text.decode("utf-8", "replace")
             first = next((ln.strip().lstrip("/*# ").strip()
