@@ -1623,10 +1623,35 @@ def cmd_callers(root, name):
         print(f"(no recorded callers of {name})")
 
 
-def cmd_lint(root, lang, strict):
+def _index_stale(root, idx):
+    """Why the index no longer matches the checkout, or None: a commit since it was built, or a tracked file edited
+    after it (netpaw m-8358: lint kept listing 826 gaps 35 min after 100 docblocks merged; only bg-refresh rebuilt it)."""
+    head = _git(root, "rev-parse", "--short", "HEAD").strip()
+    if head and idx.get("head") and head != idx.get("head"):
+        return f"built at {idx['head']}, HEAD is {head}"
+    try:
+        built = os.path.getmtime(_index_path(root))
+        for ln in _git(root, "status", "--porcelain").splitlines():
+            f = os.path.join(root, ln[3:].strip())
+            if os.path.isfile(f) and os.path.getmtime(f) > built:
+                return f"{ln[3:].strip()} changed after it was built"
+    except OSError:
+        pass
+    return None
+
+
+def cmd_lint(root, lang, strict, scope=None):
     idx = _load(root)
     if not idx:
         print("no symbol index — run: symbols.py gen"); return 0
+    why = _index_stale(root, idx)
+    if why:
+        print(f"(symbol index stale: {why}; rebuilding first)", file=sys.stderr)
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()):
+            cmd_gen(root, scope or current_scope(root))
+        idx = _load(root) or idx
     langf = {"php": "PHP", "py": "Python", "python": "Python", "cs": "C#"}.get((lang or "").lower())
     fns = [s for s in idx["symbols"] if s["kind"] in ("function", "method")
            and (not langf or s["lang"] == langf) and not s.get("archived")]
@@ -1906,7 +1931,7 @@ def main():
     elif a.cmd == "callers":
         cmd_callers(root, a.arg)
     elif a.cmd == "lint":
-        sys.exit(cmd_lint(root, a.lang or a.arg, a.strict))
+        sys.exit(cmd_lint(root, a.lang or a.arg, a.strict, scope))
     elif a.cmd == "index":
         cmd_index(root, scope)
     elif a.cmd == "map":
