@@ -265,9 +265,10 @@ def main():
             if why:
                 print(f"draft refused: {why}"); sys.exit(1)
             try:
-                body = subprocess.run(["claude", "-p", "--model", a.model, "--allowed-tools", ""],
+                lean, lenv = halt.claude_flags("text")      # --allowed-tools "" only pre-approved; it shrank nothing
+                body = subprocess.run(["claude", "-p", "--model", a.model, *lean],
                                       input=prompt, capture_output=True, text=True, timeout=240,
-                                      env=halt.agent_env()).stdout.strip()
+                                      env=halt.agent_env(dict(os.environ, **lenv))).stdout.strip()
             except Exception as e:
                 print(f"draft failed: {e}"); sys.exit(1)
         if not body:
