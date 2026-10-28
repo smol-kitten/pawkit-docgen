@@ -35,15 +35,25 @@ MANIFEST = {
 STD_GLOBAL = ("--cwd", "--json", "--scope")
 
 
-def pre(prog, commands):
+def pre(prog, commands, sub_help=False):
     """Handle --registry and unknown-subcommand hinting. Call at top of main().
-    `commands` = {name: {"help": str, "eg": str (example), "power": str}}."""
+    `commands` = {name: {"help": str, "eg": str (example), "power": str}}.
+    sub_help=True: `<prog> <cmd> --help|-h` prints that command's help + example and exits 0, for tools whose
+    parsing would otherwise run the command with '--help' as an argument (mem recall) or print only the top-level
+    usage (tasks add). Leave it off for argparse-subparser tools: their own per-command --help is richer."""
     argv = sys.argv[1:]
     if "--registry" in argv:
         print(json.dumps(registry(prog, commands)))
         raise SystemExit(0)
     # first non-flag token is the subcommand; if it's clearly wrong, help early.
     first = next((a for a in argv if not a.startswith("-")), None)
+    if sub_help and first in (commands or {}) and ("--help" in argv or "-h" in argv):
+        m = commands[first] or {}
+        print(f"{prog} {first} — {m.get('help', '')}")
+        if m.get("eg"):
+            print(f"  e.g. {m['eg']}")
+        print(f"  all commands: `dev {prog}`")
+        raise SystemExit(0)
     if first is not None and commands and first not in commands:
         near = difflib.get_close_matches(first, list(commands), n=1)
         hint = f" Did you mean `{near[0]}`?" if near else ""
@@ -51,7 +61,7 @@ def pre(prog, commands):
         listed = ", ".join(names[:30]) + (f" … (+{len(names) - 30})" if len(names) > 30 else "")
         sys.stderr.write(
             f"{prog}: unknown command '{first}'.{hint}\n  commands: {listed}\n"
-            f"  Run `dev {prog}` for usage (or `dev` for the full tool index).\n")
+            f"  Run `dev {prog}` for usage (or `dev` for the tool index).\n")
         raise SystemExit(2)
 
 
