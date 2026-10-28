@@ -47,9 +47,11 @@ def pre(prog, commands):
     if first is not None and commands and first not in commands:
         near = difflib.get_close_matches(first, list(commands), n=1)
         hint = f" Did you mean `{near[0]}`?" if near else ""
+        names = sorted(commands)
+        listed = ", ".join(names[:30]) + (f" … (+{len(names) - 30})" if len(names) > 30 else "")
         sys.stderr.write(
-            f"{prog}: unknown command '{first}'.{hint} "
-            f"Run `dev {prog}` for usage (or `dev` for the full tool index).\n")
+            f"{prog}: unknown command '{first}'.{hint}\n  commands: {listed}\n"
+            f"  Run `dev {prog}` for usage (or `dev` for the full tool index).\n")
         raise SystemExit(2)
 
 
