@@ -10,8 +10,10 @@
 # read PAT). The copy-to-home below handles both root layout (pawkit) and a claude-memory/
 # subdir layout, so it works regardless of which mirror is checked out to $TOOLING_SRC.
 #
-# Contract: publish-only, deterministic (no model in CI → AI passes self-skip), commit with
-# [skip ci] so it cannot loop. Fail-open: any generator error still lets the commit step run
+# Contract: publish-only, deterministic (no model in CI → AI passes self-skip). It cannot loop:
+# the push uses the job's GITHUB_TOKEN, and GitHub starts no workflow run for those pushes. So no
+# [skip ci]: that marker also suppressed the push event of a release tag placed on this commit, and
+# tag-triggered releases silently never ran (PoloPack#94, orchestrator m-9130). Fail-open: any generator error still lets the commit step run
 # over whatever regenerated cleanly.
 #
 # Usage (from the workflow, repo checked out at $PWD, tooling checked out at $TOOLING_SRC):
@@ -51,7 +53,7 @@ echo "::group::regenerate discovery copy"
   "$PY" "$HOME_DIR/agentsmd.py" gen         --cwd "$REPO" || true
 echo "::endgroup::"
 
-# 2) commit only the discovery paths, with [skip ci] so no workflow re-triggers.
+# 2) commit only the discovery paths (no [skip ci]: see the contract above).
 cd "$REPO" || exit 0
 git add -- .claude AGENTS.md 2>/dev/null || true
 if git diff --cached --quiet; then
@@ -60,7 +62,7 @@ if git diff --cached --quiet; then
 fi
 git config user.name  "polo-nyan[bot]"
 git config user.email "polo-nyan-bot@users.noreply.github.com"
-git commit -m "chore(docs): refresh indexes + wiki [skip ci]" \
+git commit -m "chore(docs): refresh indexes + wiki" \
   --trailer "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 git push origin "HEAD:${GITHUB_REF_NAME:-main}"
 echo "docs-refresh: published."
