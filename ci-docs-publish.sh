@@ -63,6 +63,6 @@ fi
 git config user.name  "polo-nyan[bot]"
 git config user.email "polo-nyan-bot@users.noreply.github.com"
 git commit -m "chore(docs): refresh indexes + wiki" \
-  --trailer "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
+  --trailer "Co-Authored-By: Claude <noreply@anthropic.com>"
 git push origin "HEAD:${GITHUB_REF_NAME:-main}"
 echo "docs-refresh: published."
