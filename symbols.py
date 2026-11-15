@@ -1716,8 +1716,8 @@ def cmd_dead(root, show_all=False):
         if s.get("archived"):                    # archived tree: indexed, never nagged (t-8002a9)
             continue
         name, cls = s["name"], s.get("class", "")
-        if len(name) < 3 or name in COMMON:      # too short (CALL_RE needs ≥3) or too common to track:
-            continue                             # its call sites are never indexed → always a FP (Go d.init())
+        if len(name) < 3:                        # too short to track by name (CALL_RE needs ≥3);
+            continue                             # its call sites are never indexed → always a FP
         if name.startswith("__") or name in _ENTRY_NAMES or name == cls:  # ctor/magic/entry
             continue
         if s.get("override"):                    # base/framework-invoked via polymorphism
