@@ -573,6 +573,22 @@ def ts_symbols(root, rel, grammar, label):
 
 
 # ---- reverse call index -----------------------------------------------------
+def _not_own_def(syms):
+    """Filter for call sites: drop a site only when it is the definition of that same name (its parameter
+    list looks like a call). Other calls on a definition line stay: a C# expression-bodied member
+    `int Drain(..) => Log.Drain(d);` or a local function `int R(int i) => ParseReg(Get(o, i));` calls them
+    (t-f354df). A name that occurs twice on its own definition line (`int Get(int a) => Get(a, 0);`) is a call."""
+    defs = {}
+    for s in syms:
+        defs.setdefault((s["file"], s["line"]), set()).add(s["name"])
+
+    def keep(nm, c):
+        if nm not in defs.get((c["file"], c["line"]), ()):
+            return True
+        return sum(1 for m in CALL_RE.finditer(c.get("text", "")) if m.group(1) == nm) > 1
+    return keep
+
+
 def call_index(root, files, names):
     """One pass over sources: name( occurrences whose name is a known symbol."""
     nameset = {n for n in names if len(n) >= 3 and n not in COMMON}
@@ -625,10 +641,10 @@ def build(root):
     build.ts_used = False
     syms = _parse_symbols(root, files)
     # drop call sites of the definition lines themselves
-    defset = {(s["file"], s["line"]) for s in syms}
+    keep = _not_own_def(syms)
     calls = call_index(root, files, [s["name"] for s in syms])
     for nm, lst in calls.items():
-        calls[nm] = [c for c in lst if (c["file"], c["line"]) not in defset]
+        calls[nm] = [c for c in lst if keep(nm, c)]
     refs = sorted(_referenced_names(root, [s["name"] for s in syms], files))
     return {"files": len(files), "symbols": syms, "calls": calls, "refs": refs}
 
@@ -705,7 +721,7 @@ def build_incremental(root, prev, index_mtime):
     # calls: keep prior sites not located in a stale file, add re-scanned sites for
     # the changed files (against the FULL updated name set).
     names = [s["name"] for s in syms]
-    defset = {(s["file"], s["line"]) for s in syms}
+    keep = _not_own_def(syms)
     fresh = call_index(root, changed, names)
     calls = {}
     for nm, lst in (prev.get("calls") or {}).items():
@@ -713,7 +729,7 @@ def build_incremental(root, prev, index_mtime):
         if kept:
             calls[nm] = kept
     for nm, lst in fresh.items():
-        merged = calls.get(nm, []) + [c for c in lst if (c["file"], c["line"]) not in defset]
+        merged = calls.get(nm, []) + [c for c in lst if keep(nm, c)]
         # keep the same per-name cap as call_index
         calls[nm] = merged[:12]
     # method-group refs: recompute over all files (one text scan; cheap vs re-parse)
